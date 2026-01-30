@@ -1,0 +1,1380 @@
+openapi: 3.0.3
+info:
+  title: Booking Management API
+  description: API documentation for booking management endpoints in Medusa application
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:9000
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: Store - Booking Carts
+    description: Public endpoints for managing booking carts
+  - name: Store - Booking Resources
+    description: Public endpoints for browsing booking resources
+  - name: Admin - Bookings
+    description: Administrative endpoints for managing bookings
+  - name: Admin - Booking Resources
+    description: Administrative endpoints for managing booking resources
+  - name: Admin - Availability Rules
+    description: Administrative endpoints for managing availability rules
+  - name: Admin - Pricing
+    description: Administrative endpoints for managing pricing configurations
+
+paths:
+  # Store - Booking Carts
+  /store/booking-carts:
+    post:
+      tags:
+        - Store - Booking Carts
+      summary: Create a new booking cart
+      description: Creates a new booking cart for storing booking items
+      operationId: createBookingCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCartWorkflowInput'
+      responses:
+        '200':
+          description: Cart created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResult'
+
+  /store/booking-carts/{id}:
+    get:
+      tags:
+        - Store - Booking Carts
+      summary: Get booking cart
+      description: Retrieve a booking cart with its booking line items
+      operationId: getBookingCart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cart ID
+      responses:
+        '200':
+          description: Cart retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cart:
+                    $ref: '#/components/schemas/Cart'
+                  booking_line_items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookingCartItem'
+
+    post:
+      tags:
+        - Store - Booking Carts
+      summary: Update booking cart
+      description: Update customer information for a booking cart
+      operationId: updateBookingCart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cart ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customer_email:
+                  type: string
+                  format: email
+                customer_address:
+                  $ref: '#/components/schemas/Address'
+      responses:
+        '200':
+          description: Cart updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cart:
+                    $ref: '#/components/schemas/Cart'
+
+  /store/booking-carts/{id}/complete:
+    post:
+      tags:
+        - Store - Booking Carts
+      summary: Complete booking cart
+      description: Complete a booking cart, creating an order and bookings
+      operationId: completeBookingCart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cart ID
+      responses:
+        '200':
+          description: Cart completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCartCompletionResult'
+
+  /store/booking-carts/{id}/items:
+    post:
+      tags:
+        - Store - Booking Carts
+      summary: Add item to booking cart
+      description: Add a booking item to the cart
+      operationId: addBookingCartItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cart ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - booking_resource_id
+                - start_date
+                - end_date
+              properties:
+                booking_resource_id:
+                  type: string
+                start_date:
+                  type: string
+                  format: date-time
+                end_date:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Item added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_cart_item:
+                    $ref: '#/components/schemas/BookingCartItem'
+                  booking_resource_allocation:
+                    $ref: '#/components/schemas/BookingResourceAllocation'
+
+  /store/booking-carts/{id}/items/{itemId}:
+    delete:
+      tags:
+        - Store - Booking Carts
+      summary: Remove item from booking cart
+      description: Remove a booking item from the cart
+      operationId: removeBookingCartItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cart ID
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cart item ID
+      responses:
+        '200':
+          description: Item removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # Store - Booking Resources
+  /store/booking-resources:
+    get:
+      tags:
+        - Store - Booking Resources
+      summary: List booking resources
+      description: Get all available booking resources with product information
+      operationId: listBookingResources
+      responses:
+        '200':
+          description: List of booking resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    booking_resource:
+                      $ref: '#/components/schemas/BookingResource'
+                    product:
+                      $ref: '#/components/schemas/Product'
+
+  /store/booking-resources/{id}:
+    get:
+      tags:
+        - Store - Booking Resources
+      summary: Get booking resource
+      description: Get a specific booking resource with product information
+      operationId: getBookingResource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      responses:
+        '200':
+          description: Booking resource retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookingResource:
+                    $ref: '#/components/schemas/BookingResource'
+                  product:
+                    $ref: '#/components/schemas/Product'
+
+  /store/booking-resources/{id}/availability:
+    get:
+      tags:
+        - Store - Booking Resources
+      summary: Get booking resource availability
+      description: Get availability information for a booking resource
+      operationId: getBookingResourceAvailability
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start date for availability check
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End date for availability check
+      responses:
+        '200':
+          description: Availability information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookingResource:
+                    $ref: '#/components/schemas/BookingResource'
+                  product:
+                    $ref: '#/components/schemas/Product'
+
+  /store/booking-resources/{id}/hold:
+    post:
+      tags:
+        - Store - Booking Resources
+      summary: Hold booking resource
+      description: Hold a booking resource for a time period
+      operationId: holdBookingResource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - startDate
+                - endDate
+              properties:
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Resource held successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HoldResult'
+
+  # Admin - Bookings
+  /admin/bookings:
+    get:
+      tags:
+        - Admin - Bookings
+      summary: List bookings
+      description: Get all bookings with pagination
+      operationId: listBookings
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+        - name: take
+          in: query
+          schema:
+            type: integer
+            default: 15
+          description: Number of records to take
+      responses:
+        '200':
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+                  count:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      tags:
+        - Admin - Bookings
+      summary: Create booking
+      description: Create a new booking
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - customer
+                - bookingResource
+                - context
+              properties:
+                customer:
+                  type: object
+                  required:
+                    - email
+                    - shippingAddress
+                    - billingAddress
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                    shippingAddress:
+                      $ref: '#/components/schemas/CustomerAddress'
+                    billingAddress:
+                      $ref: '#/components/schemas/CustomerAddress'
+                bookingResource:
+                  type: object
+                  required:
+                    - id
+                    - startDate
+                    - endDate
+                  properties:
+                    id:
+                      type: string
+                    startDate:
+                      type: string
+                      format: date-time
+                    endDate:
+                      type: string
+                      format: date-time
+                context:
+                  type: object
+                  required:
+                    - unit
+                  properties:
+                    unit:
+                      type: string
+                      enum: [second, minute, hour, day, custom]
+      responses:
+        '200':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResult'
+
+  /admin/bookings/{id}:
+    get:
+      tags:
+        - Admin - Bookings
+      summary: Get booking
+      description: Get a specific booking with full details
+      operationId: getBooking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking ID
+      responses:
+        '200':
+          description: Booking retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking:
+                    $ref: '#/components/schemas/Booking'
+
+  /admin/bookings/{id}/cancel:
+    post:
+      tags:
+        - Admin - Bookings
+      summary: Cancel booking
+      description: Cancel a booking
+      operationId: cancelBooking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking ID
+      responses:
+        '200':
+          description: Booking cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCancellationResult'
+
+  /admin/bookings/stats:
+    get:
+      tags:
+        - Admin - Bookings
+      summary: Get booking statistics
+      description: Get booking statistics by type
+      operationId: getBookingStats
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [active, upcoming, past, pending]
+          description: Type of statistics to retrieve
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingStats'
+
+  # Admin - Booking Resources
+  /admin/booking-resources:
+    get:
+      tags:
+        - Admin - Booking Resources
+      summary: List booking resources
+      description: Get all booking resources
+      operationId: listAdminBookingResources
+      responses:
+        '200':
+          description: List of booking resources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookingResource'
+                  count:
+                    type: integer
+
+    post:
+      tags:
+        - Admin - Booking Resources
+      summary: Create booking resource
+      description: Create a new booking resource
+      operationId: createBookingResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - booking_resource
+              properties:
+                booking_resource:
+                  $ref: '#/components/schemas/BookingResourceInput'
+                booking_resource_availablity_rules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AvailabilityRuleInput'
+                booking_resource_pricing:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PricingConfigInput'
+      responses:
+        '200':
+          description: Booking resource created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResourceResult'
+
+  /admin/booking-resources/{id}:
+    get:
+      tags:
+        - Admin - Booking Resources
+      summary: Get booking resource
+      description: Get a specific booking resource with full details
+      operationId: getAdminBookingResource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      responses:
+        '200':
+          description: Booking resource retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_resource:
+                    $ref: '#/components/schemas/BookingResource'
+                  booking_resource_availability_rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AvailabilityRule'
+                  booking_resource_pricing_configs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PricingConfig'
+
+    post:
+      tags:
+        - Admin - Booking Resources
+      summary: Update booking resource
+      description: Update a booking resource
+      operationId: updateBookingResource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                booking_resource:
+                  $ref: '#/components/schemas/BookingResourceUpdate'
+                booking_resource_product_details:
+                  $ref: '#/components/schemas/ProductDetails'
+      responses:
+        '200':
+          description: Booking resource updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_resource:
+                    $ref: '#/components/schemas/BookingResource'
+
+    delete:
+      tags:
+        - Admin - Booking Resources
+      summary: Delete booking resource
+      description: Delete a booking resource
+      operationId: deleteBookingResource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      responses:
+        '200':
+          description: Booking resource deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionResult'
+
+  /admin/booking-resources/{id}/availability:
+    get:
+      tags:
+        - Admin - Booking Resources
+      summary: Get booking resource availability
+      description: Get availability for a booking resource in a date range
+      operationId: getAdminBookingResourceAvailability
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Start date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: End date
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [month, week, day, agenda]
+            default: month
+          description: View type
+      responses:
+        '200':
+          description: Availability retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_resource:
+                    $ref: '#/components/schemas/BookingResource'
+                  availability:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookingAvailability'
+
+  /admin/booking-resources/{id}/status:
+    post:
+      tags:
+        - Admin - Booking Resources
+      summary: Update booking resource status
+      description: Update the status of a booking resource (published/draft)
+      operationId: updateBookingResourceStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [published, draft]
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_resource:
+                    $ref: '#/components/schemas/BookingResource'
+
+  /admin/booking-resources/{id}/allocations/{allocationId}:
+    delete:
+      tags:
+        - Admin - Booking Resources
+      summary: Delete allocation
+      description: Delete a booking resource allocation
+      operationId: deleteAllocation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: allocationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Allocation ID
+      responses:
+        '200':
+          description: Allocation deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # Admin - Availability Rules
+  /admin/booking-resources/{id}/availability-rules:
+    get:
+      tags:
+        - Admin - Availability Rules
+      summary: List availability rules
+      description: Get all availability rules for a booking resource
+      operationId: listAvailabilityRules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      responses:
+        '200':
+          description: List of availability rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailabilityRule'
+
+    post:
+      tags:
+        - Admin - Availability Rules
+      summary: Create availability rule
+      description: Create a new availability rule for a booking resource
+      operationId: createAvailabilityRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityRuleInput'
+      responses:
+        '200':
+          description: Availability rule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityRule'
+
+  /admin/booking-resources/{id}/availability-rules/{availabilityRuleId}:
+    get:
+      tags:
+        - Admin - Availability Rules
+      summary: Get availability rule
+      description: Get a specific availability rule
+      operationId: getAvailabilityRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: availabilityRuleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Availability rule ID
+      responses:
+        '200':
+          description: Availability rule retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityRule'
+
+    post:
+      tags:
+        - Admin - Availability Rules
+      summary: Update availability rule
+      description: Update an availability rule
+      operationId: updateAvailabilityRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: availabilityRuleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Availability rule ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bookingResourceAvailabilityRule:
+                  $ref: '#/components/schemas/AvailabilityRule'
+      responses:
+        '200':
+          description: Availability rule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityRule'
+
+    delete:
+      tags:
+        - Admin - Availability Rules
+      summary: Delete availability rule
+      description: Delete an availability rule
+      operationId: deleteAvailabilityRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: availabilityRuleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Availability rule ID
+      responses:
+        '200':
+          description: Availability rule deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # Admin - Pricing
+  /admin/booking-resources/{id}/pricing:
+    post:
+      tags:
+        - Admin - Pricing
+      summary: Create pricing configuration
+      description: Create a new pricing configuration for a booking resource
+      operationId: createPricingConfig
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - booking_resource_pricing_config
+                - booking_resource_pricing
+              properties:
+                booking_resource_pricing_config:
+                  $ref: '#/components/schemas/PricingConfigInput'
+                booking_resource_pricing:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BookingResourcePricing'
+      responses:
+        '200':
+          description: Pricing configuration created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_resource:
+                    $ref: '#/components/schemas/BookingResource'
+
+    delete:
+      tags:
+        - Admin - Pricing
+      summary: Delete pricing configuration
+      description: Delete pricing configuration (deletes the booking resource)
+      operationId: deletePricingConfig
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+      responses:
+        '200':
+          description: Pricing configuration deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionResult'
+
+  /admin/booking-resources/{id}/pricing/{priceConfigId}:
+    post:
+      tags:
+        - Admin - Pricing
+      summary: Update pricing configuration
+      description: Update a pricing configuration
+      operationId: updatePricingConfig
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: priceConfigId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Price configuration ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - config
+                - pricing
+              properties:
+                config:
+                  $ref: '#/components/schemas/PricingConfig'
+                pricing:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BookingResourcePricing'
+      responses:
+        '200':
+          description: Pricing configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingUpdateResult'
+
+    delete:
+      tags:
+        - Admin - Pricing
+      summary: Delete pricing configuration
+      description: Delete a specific pricing configuration
+      operationId: deleteSpecificPricingConfig
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: priceConfigId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Price configuration ID
+      responses:
+        '200':
+          description: Pricing configuration deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+components:
+  schemas:
+    # Common schemas
+    Address:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        address_1:
+          type: string
+        address_2:
+          type: string
+        city:
+          type: string
+        country_code:
+          type: string
+        province:
+          type: string
+        postal_code:
+          type: string
+        phone:
+          type: string
+
+    CustomerAddress:
+      allOf:
+        - $ref: '#/components/schemas/Address'
+        - type: object
+          properties:
+            metadata:
+              type: object
+
+    # Cart schemas
+    CreateCartWorkflowInput:
+      type: object
+      description: Input for creating a cart workflow
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        currency_code:
+          type: string
+        region_id:
+          type: string
+        customer_id:
+          type: string
+        billing_address:
+          $ref: '#/components/schemas/Address'
+        shipping_address:
+          $ref: '#/components/schemas/Address'
+
+    CartResult:
+      type: object
+      properties:
+        cart:
+          $ref: '#/components/schemas/Cart'
+
+    # Booking schemas
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, confirmed, active, completed, cancelled]
+        order:
+          type: object
+        booking_line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingLineItem'
+
+    BookingLineItem:
+      type: object
+      properties:
+        id:
+          type: string
+        booking_id:
+          type: string
+        booking_resource_allocation:
+          $ref: '#/components/schemas/BookingResourceAllocation'
+
+    BookingCartItem:
+      type: object
+      properties:
+        id:
+          type: string
+        cart_id:
+          type: string
+        cart_line_item_id:
+          type: string
+        booking_resource_allocation:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+
+    BookingResult:
+      type: object
+      properties:
+        booking:
+          $ref: '#/components/schemas/Booking'
+
+    BookingCartCompletionResult:
+      type: object
+      description: Result of completing a booking cart
+
+    BookingCancellationResult:
+      type: object
+      description: Result of cancelling a booking
+
+    BookingStats:
+      type: object
+      properties:
+        active:
+          type: object
+          properties:
+            count:
+              type: integer
+            difference:
+              type: integer
+        upcoming:
+          type: object
+          properties:
+            count:
+              type: integer
+            difference:
+              type: integer
+        past:
+          type: object
+          properties:
+            count:
+              type: integer
+        pending:
+          type: object
+          properties:
+            count:
+              type: integer
+            difference:
+              type: integer
+
+    # Booking Resource schemas
+    BookingResource:
+      type: object
+      properties:
+        id:
+          type: string
+        product_id:
+          type: string
+        resource_type:
+          type: string
+        is_bookable:
+          type: boolean
+        pricing_unit:
+          type: string
+        pricing_unit_value:
+          type: integer
+        status:
+          type: string
+          enum: [published, draft]
+
+    BookingResourceInput:
+      type: object
+      description: Input for creating a booking resource
+
+    BookingResourceUpdate:
+      type: object
+      description: Input for updating a booking resource
+
+    BookingResourceResult:
+      type: object
+      properties:
+        booking_resource:
+          $ref: '#/components/schemas/BookingResource'
+
+    BookingResourceAllocation:
+      type: object
+      properties:
+        id:
+          type: string
+        booking_resource_id:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [hold, reserved, confirmed, cancelled]
+
+    BookingAvailability:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        status:
+          type: string
+
+    HoldResult:
+      type: object
+      description: Result of holding a booking resource
+
+    # Product schemas
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        handle:
+          type: string
+        description:
+          type: string
+        thumbnail:
+          type: string
+
+    ProductDetails:
+      type: object
+      description: Product details for booking resource
+
+    # Availability Rule schemas
+    AvailabilityRule:
+      type: object
+      properties:
+        id:
+          type: string
+        booking_resource_id:
+          type: string
+        rule_type:
+          type: string
+        name:
+          type: string
+        effect:
+          type: string
+        priority:
+          type: integer
+        description:
+          type: string
+        configuration:
+          type: object
+        valid_from:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+
+    AvailabilityRuleInput:
+      type: object
+      properties:
+        rule_type:
+          type: string
+        name:
+          type: string
+        effect:
+          type: string
+        priority:
+          type: integer
+        description:
+          type: string
+        configuration:
+          type: object
+        valid_from:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+
+    # Pricing schemas
+    PricingConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        booking_resource_id:
+          type: string
+        product_variant_id:
+          type: string
+
+    PricingConfigInput:
+      type: object
+      description: Input for creating a pricing configuration
+
+    BookingResourcePricing:
+      type: object
+      properties:
+        currency_code:
+          type: string
+        amount:
+          type: number
+        min_quantity:
+          type: integer
+        max_quantity:
+          type: integer
+
+    PricingUpdateResult:
+      type: object
+      description: Result of updating pricing configuration
+
+    # Common result schemas
+    DeletionResult:
+      type: object
+      description: Result of a deletion operation
