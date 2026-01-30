@@ -297,10 +297,6 @@ curl -X POST http://localhost:9000/store/booking-carts/[cartId]/complete
 
 The booking is now confirmed, and the resource allocation is finalized.
 
-## License
-
-MIT
-
 ## Author
 
 RSC Labs (https://rsoftcon.com)
