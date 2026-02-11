@@ -93,7 +93,7 @@ import { defineConfig } from "@medusajs/framework";
 
 export default defineConfig({
   // ... your existing config
-  modules: [
+  plugins: [
     // ... your existing modules
     {
       resolve: "@rsc-labs/medusa-booking-system",
