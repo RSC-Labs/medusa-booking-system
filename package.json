@@ -1,6 +1,6 @@
 {
   "name": "@rsc-labs/medusa-booking-system",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A plugin for MedusaJS to add booking system functionality",
   "author": "RSC Labs (https://rsoftcon.com)",
   "license": "MIT",

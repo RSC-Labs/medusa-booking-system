@@ -1,59 +1,45 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import BookingModuleService from "../../../../../../modules/booking/service";
 import { BOOKING_MODULE } from "../../../../../../modules/booking";
 import { BookingResourceAvailabilityRuleType } from "../../../../../../modules/booking/types/booking";
 
 type PostAdminBookingResourceAvailablityRuleType = {
-  bookingResourceAvailabilityRule: BookingResourceAvailabilityRuleType
-}
+  bookingResourceAvailabilityRule: BookingResourceAvailabilityRuleType;
+};
 
-export async function GET (
-  req: MedusaRequest,
-  res: MedusaResponse
-) {
-
-  const bookingModuleService: BookingModuleService = req.scope.resolve(
-    BOOKING_MODULE
-  );
+export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  const bookingModuleService: BookingModuleService =
+    req.scope.resolve(BOOKING_MODULE);
 
   const id = req.params.availabilityRuleId;
 
-  const result = await bookingModuleService.retrieveBookingResourceAvailabilityRule(id);
+  const result =
+    await bookingModuleService.retrieveBookingResourceAvailabilityRule(id);
 
   res.json(result);
 }
 
-export async function DELETE (
-  req: MedusaRequest,
-  res: MedusaResponse
-) {
-
-  const bookingModuleService: BookingModuleService = req.scope.resolve(
-    BOOKING_MODULE
-  );
+export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
+  const bookingModuleService: BookingModuleService =
+    req.scope.resolve(BOOKING_MODULE);
 
   const id = req.params.availabilityRuleId;
-  
+
   await bookingModuleService.deleteBookingResourceAvailabilityRules(id);
 
-  res.json({})
+  res.json({});
 }
 
-export async function POST (
+export async function POST(
   req: MedusaRequest<PostAdminBookingResourceAvailablityRuleType>,
-  res: MedusaResponse
+  res: MedusaResponse,
 ) {
-
-  const bookingModuleService: BookingModuleService = req.scope.resolve(
-    BOOKING_MODULE
-  );
+  const bookingModuleService: BookingModuleService =
+    req.scope.resolve(BOOKING_MODULE);
 
   const id = req.params.availabilityRuleId;
 
-  const body = req.body
+  const body = req.body;
 
   const result = bookingModuleService.updateBookingResourceAvailabilityRules({
     id: id,
@@ -66,10 +52,10 @@ export async function POST (
     valid_from: body.bookingResourceAvailabilityRule.valid_from,
     valid_until: body.bookingResourceAvailabilityRule.valid_until,
 
-    booking_resource_id: id
-  })
+    booking_resource_id: id,
+  });
 
-  res.json(result)
+  res.json(result);
 }
 
-export const AUTHENTICATE = false
+export const AUTHENTICATE = true;

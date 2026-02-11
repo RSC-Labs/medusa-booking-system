@@ -1,4 +1,4 @@
-export interface SettingsResolutionContext {
+export interface RulesResolutionContext {
   bookingResourceId?: string
   bookingId?: string
   evaluationTime?: Date

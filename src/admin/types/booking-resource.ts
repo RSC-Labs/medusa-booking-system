@@ -68,10 +68,20 @@ type UpdateBookingResourcePricingDTO = {
   pricing: BookingResourcePricingDTO[]
 }
 
+/** Booking rule summary returned on resource detail (rules that apply to this resource). */
+export type BookingRuleSummaryDTO = {
+  id: string
+  name: string
+  scope: "global" | "resource"
+  priority: number
+  is_active: boolean
+}
+
 type GetBookingResourceDTO = {
   booking_resource: BookingResourceDTO,
   booking_resource_availability_rules: BookingResourceAvailabilityRuleDTO[],
   booking_resource_pricing_configs: UpdateBookingResourcePricingDTO[],
+  booking_rules?: BookingRuleSummaryDTO[],
 }
 
 type GetBookingResourcesDTO = {
@@ -88,6 +98,7 @@ export type {
   BookingResourceAllocationDTO,
   BookingResourceAvailabilityRuleDTO,
   BookingResourcePricingConfigDTO,
+  BookingRuleSummaryDTO,
   BookingResourceProductDetailsDTO,
   UpdateBookingResourceDTO,
   GetBookingResourceDTO,

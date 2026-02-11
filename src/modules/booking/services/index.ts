@@ -1,2 +1,2 @@
 export * from "./availability-service"
-export * from "./setting-service"
+export * from "./rule-service"

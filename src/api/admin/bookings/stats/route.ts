@@ -1,7 +1,4 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import BookingModuleService from "../../../../modules/booking/service";
 import { BOOKING_MODULE } from "../../../../modules/booking";
 
@@ -21,66 +18,84 @@ type BookingStatsResponse = {
     count: number;
     difference: number;
   };
-}
+};
 
-export async function GET (
+export async function GET(
   req: MedusaRequest,
-  res: MedusaResponse<BookingStatsResponse>
+  res: MedusaResponse<BookingStatsResponse>,
 ) {
-  const bookingModuleService: BookingModuleService = req.scope.resolve(
-    BOOKING_MODULE
-  );
+  const bookingModuleService: BookingModuleService =
+    req.scope.resolve(BOOKING_MODULE);
 
   const now = new Date();
   const statsType = req.query.type as string | undefined;
 
   // Calculate date ranges for current month
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  
+  const currentMonthEnd = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
+
   // Calculate date ranges for last month
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  const lastMonthEnd = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
 
   const response: BookingStatsResponse = {};
 
   switch (statsType) {
     case "active": {
       // Filter for bookings that could be active (start_time <= current month end, end_time >= current month start)
-      const [currentBookings] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $lte: currentMonthEnd,
+      const [currentBookings] = await bookingModuleService.listAndCountBookings(
+        {
+          start_time: {
+            $lte: currentMonthEnd,
+          },
+          end_time: {
+            $gte: currentMonthStart,
+          },
+          status: {
+            $nin: ["cancelled", "completed"],
+          },
         },
-        end_time: {
-          $gte: currentMonthStart,
-        },
-        status: {
-          $nin: ["cancelled", "completed"],
-        },
-      });
+      );
 
       // Filter for last month active bookings
-      const [lastMonthBookings] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $lte: lastMonthEnd,
-        },
-        end_time: {
-          $gte: lastMonthStart,
-        },
-        status: {
-          $nin: ["cancelled", "completed"],
-        },
-      });
+      const [lastMonthBookings] =
+        await bookingModuleService.listAndCountBookings({
+          start_time: {
+            $lte: lastMonthEnd,
+          },
+          end_time: {
+            $gte: lastMonthStart,
+          },
+          status: {
+            $nin: ["cancelled", "completed"],
+          },
+        });
 
       // Filter in memory for precise active bookings (currently happening)
-      const activeBookings = currentBookings.filter(booking => {
+      const activeBookings = currentBookings.filter((booking) => {
         if (!booking.start_time || !booking.end_time) return false;
         const startTime = new Date(booking.start_time);
         const endTime = new Date(booking.end_time);
         return startTime <= now && now <= endTime;
       });
 
-      const lastMonthActiveBookings = lastMonthBookings.filter(booking => {
+      const lastMonthActiveBookings = lastMonthBookings.filter((booking) => {
         if (!booking.start_time || !booking.end_time) return false;
         const startTime = new Date(booking.start_time);
         const endTime = new Date(booking.end_time);
@@ -96,24 +111,27 @@ export async function GET (
 
     case "upcoming": {
       // Filter for upcoming bookings (start_time > now)
-      const [currentBookings] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $gt: now,
+      const [currentBookings] = await bookingModuleService.listAndCountBookings(
+        {
+          start_time: {
+            $gt: now,
+          },
+          status: {
+            $nin: ["cancelled"],
+          },
         },
-        status: {
-          $nin: ["cancelled"],
-        },
-      });
+      );
 
       // Filter for last month upcoming bookings (what was upcoming at the end of last month)
-      const [lastMonthBookings] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $gt: lastMonthEnd,
-        },
-        status: {
-          $nin: ["cancelled"],
-        },
-      });
+      const [lastMonthBookings] =
+        await bookingModuleService.listAndCountBookings({
+          start_time: {
+            $gt: lastMonthEnd,
+          },
+          status: {
+            $nin: ["cancelled"],
+          },
+        });
 
       const upcomingCount = currentBookings.length;
       const lastMonthUpcomingCount = lastMonthBookings.length;
@@ -128,8 +146,12 @@ export async function GET (
     case "past": {
       // Filter for past bookings (end_time < now or status = completed)
       // Limit to bookings that ended in the last 12 months for performance
-      const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1);
-      
+      const twelveMonthsAgo = new Date(
+        now.getFullYear(),
+        now.getMonth() - 12,
+        1,
+      );
+
       const [pastBookings] = await bookingModuleService.listAndCountBookings({
         $or: [
           {
@@ -155,20 +177,23 @@ export async function GET (
 
     case "pending": {
       // Filter for pending bookings (future bookings with pending status)
-      const [currentBookings] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $gt: now,
+      const [currentBookings] = await bookingModuleService.listAndCountBookings(
+        {
+          start_time: {
+            $gt: now,
+          },
+          status: "pending",
         },
-        status: "pending",
-      });
+      );
 
       // Filter for last month pending bookings (what was pending at the end of last month)
-      const [lastMonthBookings] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $gt: lastMonthEnd,
-        },
-        status: "pending",
-      });
+      const [lastMonthBookings] =
+        await bookingModuleService.listAndCountBookings({
+          start_time: {
+            $gt: lastMonthEnd,
+          },
+          status: "pending",
+        });
 
       const pendingCount = currentBookings.length;
       const lastMonthPendingCount = lastMonthBookings.length;
@@ -195,26 +220,28 @@ export async function GET (
         },
       });
 
-      const [activeLastMonth] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $lte: lastMonthEnd,
+      const [activeLastMonth] = await bookingModuleService.listAndCountBookings(
+        {
+          start_time: {
+            $lte: lastMonthEnd,
+          },
+          end_time: {
+            $gte: lastMonthStart,
+          },
+          status: {
+            $nin: ["cancelled", "completed"],
+          },
         },
-        end_time: {
-          $gte: lastMonthStart,
-        },
-        status: {
-          $nin: ["cancelled", "completed"],
-        },
-      });
+      );
 
-      const activeBookings = activeCurrent.filter(booking => {
+      const activeBookings = activeCurrent.filter((booking) => {
         if (!booking.start_time || !booking.end_time) return false;
         const startTime = new Date(booking.start_time);
         const endTime = new Date(booking.end_time);
         return startTime <= now && now <= endTime;
       });
 
-      const lastMonthActiveBookings = activeLastMonth.filter(booking => {
+      const lastMonthActiveBookings = activeLastMonth.filter((booking) => {
         if (!booking.start_time || !booking.end_time) return false;
         const startTime = new Date(booking.start_time);
         const endTime = new Date(booking.end_time);
@@ -222,26 +249,33 @@ export async function GET (
       });
 
       // Upcoming bookings
-      const [upcomingCurrent] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $gt: now,
+      const [upcomingCurrent] = await bookingModuleService.listAndCountBookings(
+        {
+          start_time: {
+            $gt: now,
+          },
+          status: {
+            $nin: ["cancelled"],
+          },
         },
-        status: {
-          $nin: ["cancelled"],
-        },
-      });
+      );
 
-      const [upcomingLastMonth] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $gt: lastMonthEnd,
-        },
-        status: {
-          $nin: ["cancelled"],
-        },
-      });
+      const [upcomingLastMonth] =
+        await bookingModuleService.listAndCountBookings({
+          start_time: {
+            $gt: lastMonthEnd,
+          },
+          status: {
+            $nin: ["cancelled"],
+          },
+        });
 
       // Past bookings - limit to last 12 months for performance
-      const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+      const twelveMonthsAgo = new Date(
+        now.getFullYear(),
+        now.getMonth() - 12,
+        1,
+      );
       const [pastCurrent] = await bookingModuleService.listAndCountBookings({
         $or: [
           {
@@ -267,12 +301,13 @@ export async function GET (
         status: "pending",
       });
 
-      const [pendingLastMonth] = await bookingModuleService.listAndCountBookings({
-        start_time: {
-          $gt: lastMonthEnd,
-        },
-        status: "pending",
-      });
+      const [pendingLastMonth] =
+        await bookingModuleService.listAndCountBookings({
+          start_time: {
+            $gt: lastMonthEnd,
+          },
+          status: "pending",
+        });
 
       response.active = {
         count: activeBookings.length,
@@ -299,4 +334,4 @@ export async function GET (
   res.json(response);
 }
 
-export const AUTHENTICATE = false
+export const AUTHENTICATE = true;

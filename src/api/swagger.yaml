@@ -22,6 +22,8 @@ tags:
     description: Administrative endpoints for managing bookings
   - name: Admin - Booking Resources
     description: Administrative endpoints for managing booking resources
+  - name: Admin - Booking Rules
+    description: Administrative endpoints for managing booking policy rules
   - name: Admin - Availability Rules
     description: Administrative endpoints for managing availability rules
   - name: Admin - Pricing
@@ -239,7 +241,7 @@ paths:
       tags:
         - Store - Booking Resources
       summary: Get booking resource
-      description: Get a specific booking resource with product information
+      description: Get a specific booking resource with product information. Pass region_id to get region-based calculated pricing.
       operationId: getBookingResource
       parameters:
         - name: id
@@ -248,6 +250,12 @@ paths:
           schema:
             type: string
           description: Booking resource ID
+        - name: region_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Region ID for region-based calculated price
       responses:
         '200':
           description: Booking resource retrieved successfully
@@ -260,6 +268,38 @@ paths:
                     $ref: '#/components/schemas/BookingResource'
                   product:
                     $ref: '#/components/schemas/Product'
+
+  /store/booking-resources/{id}/rules:
+    get:
+      tags:
+        - Store - Booking Resources
+      summary: Get resolved booking rules for resource
+      description: Get the resolved booking rules (policy) for this resource at an optional evaluation time
+      operationId: getBookingResourceRules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking resource ID
+        - name: evaluation_time
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: ISO date string; defaults to now if omitted
+      responses:
+        '200':
+          description: Resolved rules for the resource
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resolved_rules:
+                    $ref: '#/components/schemas/ResolvedRules'
 
   /store/booking-resources/{id}/availability:
     get:
@@ -508,6 +548,169 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BookingStats'
+
+  # Admin - Booking Rules
+  /admin/booking-rules:
+    get:
+      tags:
+        - Admin - Booking Rules
+      summary: List booking rules
+      description: Get all booking rules with booking resources count
+      operationId: listBookingRules
+      responses:
+        '200':
+          description: List of booking rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookingRule'
+                  booking_resources_count:
+                    type: integer
+    post:
+      tags:
+        - Admin - Booking Rules
+      summary: Create booking rule
+      description: Create a new booking rule
+      operationId: createBookingRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRuleInput'
+      responses:
+        '201':
+          description: Booking rule created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_rule:
+                    $ref: '#/components/schemas/BookingRule'
+
+  /admin/booking-rules/evaluate:
+    get:
+      tags:
+        - Admin - Booking Rules
+      summary: Evaluate resolved rules
+      description: Get resolved booking rules at a given evaluation time, optionally for a specific resource
+      operationId: evaluateBookingRules
+      parameters:
+        - name: evaluation_time
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: ISO date string for evaluation time
+        - name: booking_resource_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional booking resource ID to resolve rules for
+      responses:
+        '200':
+          description: Resolved rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resolved_rules:
+                    $ref: '#/components/schemas/ResolvedRules'
+        '400':
+          description: Bad request (e.g. missing or invalid evaluation_time)
+
+  /admin/booking-rules/{id}:
+    get:
+      tags:
+        - Admin - Booking Rules
+      summary: Get booking rule
+      description: Get a booking rule with booking resources count
+      operationId: getBookingRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking rule ID
+      responses:
+        '200':
+          description: Booking rule retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_rule:
+                    $ref: '#/components/schemas/BookingRule'
+                  booking_resources_count:
+                    type: integer
+    post:
+      tags:
+        - Admin - Booking Rules
+      summary: Update booking rule
+      description: Update a booking rule
+      operationId: updateBookingRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking rule ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRuleInput'
+      responses:
+        '200':
+          description: Booking rule updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_rule:
+                    $ref: '#/components/schemas/BookingRule'
+    delete:
+      tags:
+        - Admin - Booking Rules
+      summary: Delete booking rule
+      description: Delete a booking rule
+      operationId: deleteBookingRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Booking rule ID
+      responses:
+        '200':
+          description: Booking rule deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  object:
+                    type: string
+                    example: booking_rule
+                  deleted:
+                    type: boolean
+                    example: true
 
   # Admin - Booking Resources
   /admin/booking-resources:
@@ -1205,6 +1408,113 @@ components:
               type: integer
             difference:
               type: integer
+
+    # Booking Rule schemas
+    BookingRule:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        scope:
+          type: string
+          enum: [global, resource]
+        booking_resource_ids:
+          type: array
+          items:
+            type: string
+          nullable: true
+        require_payment:
+          type: boolean
+        require_confirmation:
+          type: boolean
+        reservation_ttl_seconds:
+          type: integer
+        configuration:
+          type: object
+          nullable: true
+        priority:
+          type: number
+        is_active:
+          type: boolean
+        valid_from:
+          type: string
+          format: date-time
+          nullable: true
+        valid_until:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BookingRuleInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        scope:
+          type: string
+          enum: [global, resource]
+        booking_resource_ids:
+          type: array
+          items:
+            type: string
+          nullable: true
+        require_payment:
+          type: boolean
+        require_confirmation:
+          type: boolean
+        reservation_ttl_seconds:
+          type: integer
+        configuration:
+          type: object
+          nullable: true
+        priority:
+          type: number
+        is_active:
+          type: boolean
+        valid_from:
+          type: string
+          format: date-time
+          nullable: true
+        valid_until:
+          type: string
+          format: date-time
+          nullable: true
+
+    ResolvedRules:
+      type: object
+      description: Resolved booking rules (merged by priority) at evaluation time
+      properties:
+        require_payment:
+          type: boolean
+        reservation_ttl_seconds:
+          type: integer
+        require_confirmation:
+          type: boolean
+        custom_config:
+          type: object
+          nullable: true
+        _resolved_from:
+          type: array
+          items:
+            type: string
+          description: Scopes that contributed (e.g. global, resource)
+        _priority:
+          type: number
+          description: Winning rule priority
 
     # Booking Resource schemas
     BookingResource:

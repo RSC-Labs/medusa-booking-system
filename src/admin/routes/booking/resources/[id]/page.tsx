@@ -11,17 +11,21 @@ import {
   Switch, 
   Badge, 
   Select,
+  Table,
+  FocusModal,
   toast,
   Toaster,
   Prompt,
 } from "@medusajs/ui"
 import { useParams, useNavigate } from "react-router-dom"
 import { ArrowLeft, Calendar as CalendarIcon, Loader2, Pencil, Save, X, Plus, Trash2, LayoutGrid, CheckCircle, AlertCircle } from "lucide-react"
+import { Spinner } from "@medusajs/icons"
 import { useEffect, useState, useCallback } from "react"
 import { medusaSdk } from "../../../../lib/sdk"
 import { MonthCalendar } from "../../../../ui/blocks/calendar/month-calendar"
 import { WeekCalendar } from "../../../../ui/blocks/calendar//week-calendar"
 import { BookingResourcePricingConfigDTO, BookingResourcePricingDTO, GetBookingResourceDTO, BookingResourcePricingConfigUnit, UpdateBookingResourceDTO, UpdateBookingResourcePricingDTO } from "../../../../types/booking-resource"
+import { ResolvedRulesDTO } from "../../../../types/booking-rules"
 import { BookingAvailabilityDTO, GetBookingResourceAvailabilityDTO } from "../../../../types/booking-availability"
 import { CalendarView } from "../../../../ui/blocks/calendar/calendar.types"
 import { getDefaultCalendarView } from "../../../../ui/blocks/calendar/calendar.utils"
@@ -60,6 +64,37 @@ export default function ResourceDetailPage() {
 
   const [calendarView, setCalendarView] = useState<CalendarView>("month")
   const [currentDate, setCurrentDate] = useState(new Date())
+
+  const [evaluateModalOpen, setEvaluateModalOpen] = useState(false)
+  const [evaluateResult, setEvaluateResult] = useState<ResolvedRulesDTO | null>(null)
+  const [evaluateLoading, setEvaluateLoading] = useState(false)
+  const [evaluateContext, setEvaluateContext] = useState<{ ruleName: string; evaluationTime: string } | null>(null)
+
+  const evaluateRuleAtNow = useCallback(async (rule: { id: string; name: string }) => {
+    if (!resourceId) return
+    setEvaluateLoading(true)
+    setEvaluateResult(null)
+    setEvaluateContext({
+      ruleName: rule.name ?? rule.id,
+      evaluationTime: new Date().toISOString(),
+    })
+    setEvaluateModalOpen(true)
+    try {
+      const params = new URLSearchParams({
+        evaluation_time: new Date().toISOString(),
+        booking_resource_id: resourceId,
+      })
+      const response = await medusaSdk.client.fetch<{ resolved_rules: ResolvedRulesDTO }>(
+        `/admin/booking-rules/evaluate?${params.toString()}`
+      )
+      setEvaluateResult(response.resolved_rules ?? null)
+    } catch (error) {
+      console.error("Failed to evaluate rules", error)
+      setEvaluateResult(null)
+    } finally {
+      setEvaluateLoading(false)
+    }
+  }, [resourceId])
 
   useEffect(() => {
     if (data?.booking_resource) {
@@ -399,7 +434,7 @@ export default function ResourceDetailPage() {
     return <div>Resource not found</div>
   }
 
-  const { booking_resource, booking_resource_pricing_configs, booking_resource_availability_rules } = data
+  const { booking_resource, booking_resource_pricing_configs, booking_resource_availability_rules, booking_rules = [] } = data
 
   const handlePublish = async () => {
     try {
@@ -950,6 +985,133 @@ export default function ResourceDetailPage() {
           )}
         </div>
       </Container>
+
+      <Container className="p-0 overflow-hidden">
+        <div className="flex flex-row items-center justify-between space-y-0 px-6 py-4 border-b border-ui-border-base">
+          <div className="flex flex-col space-y-1.5">
+            <Heading level="h2">Booking rules</Heading>
+            <Text className="text-ui-fg-subtle">Rules that apply to this resource (global or targeting this resource)</Text>
+          </div>
+        </div>
+        <div className="p-6">
+          {booking_rules.length > 0 ? (
+            <Table>
+              <Table.Header>
+                <Table.Row>
+                  <Table.HeaderCell>Name</Table.HeaderCell>
+                  <Table.HeaderCell></Table.HeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {booking_rules.map((rule) => (
+                  <Table.Row
+                    key={rule.id}
+                    className="cursor-pointer hover:bg-ui-bg-base-hover"
+                    onClick={() => navigate(`/booking/rules/${rule.id}`)}
+                  >
+                    <Table.Cell className="font-medium">{rule.name}</Table.Cell>
+                    <Table.Cell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        onClick={() => evaluateRuleAtNow(rule)}
+                        disabled={evaluateLoading}
+                      >
+                        {evaluateLoading && evaluateContext?.ruleName === (rule.name ?? rule.id)
+                          ? "Evaluating…"
+                          : "Evaluate"}
+                      </Button>
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table>
+          ) : (
+            <Text className="text-sm text-ui-fg-subtle">No booking rules apply to this resource.</Text>
+          )}
+        </div>
+      </Container>
+
+      <FocusModal open={evaluateModalOpen} onOpenChange={setEvaluateModalOpen}>
+        <FocusModal.Content>
+          <FocusModal.Header>
+            <FocusModal.Title>
+              Evaluate{evaluateContext?.ruleName ? `: ${evaluateContext.ruleName}` : ""}
+            </FocusModal.Title>
+          </FocusModal.Header>
+          <FocusModal.Body className="overflow-y-auto">
+            <div className="w-full px-4 py-6">
+              <div className="flex justify-center">
+                <div className="w-full max-w-2xl space-y-6">
+                  {evaluateContext && (
+                    <Text size="small" className="text-ui-fg-subtle text-center">
+                      Evaluation at {new Date(evaluateContext.evaluationTime).toLocaleString()} for this resource
+                    </Text>
+                  )}
+                  {evaluateLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Spinner className="animate-spin" />
+                    </div>
+                  ) : evaluateResult ? (
+                    <div>
+                      <Text size="small" className="font-medium text-ui-fg-subtle mb-2">
+                        Applied rules
+                      </Text>
+                      <div className="p-4 bg-ui-bg-subtle rounded-md space-y-3">
+                        <div className="flex justify-between items-center gap-4">
+                          <Text size="small" className="text-ui-fg-subtle">Require payment</Text>
+                          <Badge size="small" color={evaluateResult.require_payment ? "green" : "grey"}>
+                            {evaluateResult.require_payment ? "Yes" : "No"}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center gap-4">
+                          <Text size="small" className="text-ui-fg-subtle">Require confirmation</Text>
+                          <Badge size="small" color={evaluateResult.require_confirmation ? "orange" : "grey"}>
+                            {evaluateResult.require_confirmation ? "Yes" : "No"}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center gap-4">
+                          <Text size="small" className="text-ui-fg-subtle">Reservation TTL (seconds)</Text>
+                          <Text size="small">{evaluateResult.reservation_ttl_seconds}</Text>
+                        </div>
+                        <div className="flex justify-between items-center gap-4">
+                          <Text size="small" className="text-ui-fg-subtle">Resolved from</Text>
+                          <Text size="small">
+                            {evaluateResult._resolved_from?.length ? evaluateResult._resolved_from.join(", ") : "—"}
+                          </Text>
+                        </div>
+                        <div className="flex justify-between items-center gap-4">
+                          <Text size="small" className="text-ui-fg-subtle">Priority</Text>
+                          <Text size="small">{evaluateResult._priority}</Text>
+                        </div>
+                        {evaluateResult.custom_config != null && Object.keys(evaluateResult.custom_config).length > 0 && (
+                          <div className="pt-2 border-t border-ui-border-base">
+                            <Text size="small" className="text-ui-fg-subtle block mb-2">Custom config</Text>
+                            <pre className="font-mono text-xs bg-ui-bg-base p-2 rounded overflow-auto max-h-24">
+                              {JSON.stringify(evaluateResult.custom_config, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    !evaluateLoading && (
+                      <Text size="small" className="text-ui-fg-subtle text-center">
+                        No result (e.g. request failed).
+                      </Text>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          </FocusModal.Body>
+          <FocusModal.Footer>
+            <Button variant="secondary" onClick={() => setEvaluateModalOpen(false)}>
+              Close
+            </Button>
+          </FocusModal.Footer>
+        </FocusModal.Content>
+      </FocusModal>
 
       <Toaster />
     </div>

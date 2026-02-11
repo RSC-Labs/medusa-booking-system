@@ -1,6 +1,6 @@
-export type SettingsScope = "global" | "resource" | "booking"
+export type RulesScope = "global" | "resource" | "booking"
 
-export interface ResolvedSettings {
+export interface ResolvedRules {
   // Payment
   require_payment: boolean
   
@@ -14,17 +14,17 @@ export interface ResolvedSettings {
   custom_config: Record<string, any> | null
   
   // Metadata
-  _resolved_from: SettingsScope[]
+  _resolved_from: RulesScope[]
   _priority: number
 }
 
-export interface SettingsResolutionContext {
+export interface RulesResolutionContext {
   bookingResourceId?: string
   bookingId?: string
   evaluationTime?: Date
 }
 
-export const DEFAULT_SETTINGS: ResolvedSettings = {
+export const DEFAULT_RULES: ResolvedRules = {
   require_payment: true,
   
   reservation_ttl_seconds: 3600,

@@ -1,23 +1,19 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import cancelAdminBookingWorkflow from "../../../../../workflows/booking/cancelAdminBooking";
 
-type CancelAdminBookingType = {}
+type CancelAdminBookingType = {};
 
-export async function POST (
+export async function POST(
   req: MedusaRequest<CancelAdminBookingType>,
-  res: MedusaResponse
+  res: MedusaResponse,
 ) {
-
   const { result } = await cancelAdminBookingWorkflow(req.scope).run({
     input: {
       bookingId: req.params.id,
-    }
-  })
+    },
+  });
 
-  res.json(result)
+  res.json(result);
 }
 
-export const AUTHENTICATE = false
+export const AUTHENTICATE = true;

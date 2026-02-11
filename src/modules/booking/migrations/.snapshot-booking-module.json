@@ -1215,6 +1215,24 @@
           "nullable": false,
           "mappedType": "text"
         },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
         "scope": {
           "name": "scope",
           "type": "text",
@@ -1229,14 +1247,14 @@
           ],
           "mappedType": "enum"
         },
-        "booking_resource_id": {
-          "name": "booking_resource_id",
-          "type": "text",
+        "booking_resource_ids": {
+          "name": "booking_resource_ids",
+          "type": "text[]",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "text"
+          "mappedType": "array"
         },
         "require_payment": {
           "name": "require_payment",
@@ -1350,20 +1368,20 @@
           "mappedType": "datetime"
         }
       },
-      "name": "booking_setting",
+      "name": "booking_rule",
       "schema": "public",
       "indexes": [
         {
-          "keyName": "IDX_booking_setting_deleted_at",
+          "keyName": "IDX_booking_rule_deleted_at",
           "columnNames": [],
           "composite": false,
           "constraint": false,
           "primary": false,
           "unique": false,
-          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_booking_setting_deleted_at\" ON \"booking_setting\" (\"deleted_at\") WHERE deleted_at IS NULL"
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_booking_rule_deleted_at\" ON \"booking_rule\" (\"deleted_at\") WHERE deleted_at IS NULL"
         },
         {
-          "keyName": "booking_setting_pkey",
+          "keyName": "booking_rule_pkey",
           "columnNames": [
             "id"
           ],

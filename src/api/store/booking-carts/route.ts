@@ -1,19 +1,18 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
-import { createCartWorkflow, CreateCartWorkflowInput } from "@medusajs/medusa/core-flows";
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+import {
+  createCartWorkflow,
+  CreateCartWorkflowInput,
+} from "@medusajs/medusa/core-flows";
 
-export async function POST (
+export async function POST(
   req: MedusaRequest<CreateCartWorkflowInput>,
-  res: MedusaResponse
+  res: MedusaResponse,
 ) {
-
   const { result } = await createCartWorkflow(req.scope).run({
-    input: req.body 
-  })
+    input: req.body,
+  });
 
-  res.json(result)
+  res.json(result);
 }
 
-export const AUTHENTICATE = false
+export const AUTHENTICATE = true;

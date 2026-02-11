@@ -44,4 +44,4 @@ export async function POST (
   res.json(result)
 }
 
-export const AUTHENTICATE = false
+export const AUTHENTICATE = true

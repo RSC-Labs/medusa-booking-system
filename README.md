@@ -1,4 +1,4 @@
-# Medusa Booking System
+# Medusa Booking System Plugin
 
 A comprehensive booking system plugin for MedusaJS that enables you to define resources, configure availability rules, set up pricing, and manage bookings through both admin and storefront interfaces.
 
@@ -8,6 +8,7 @@ The Medusa Booking System Plugin extends your Medusa e-commerce platform with po
 
 - **Define Resources**: Create bookable resources with custom types and configurations
 - **Configure Availability**: Set up flexible availability rules with priority-based scheduling
+- **Booking Rules**: Define policy rules (payment, confirmation, reservation TTL) with global or per-resource scope
 - **Manage Pricing**: Configure dynamic pricing based on dates, quantities, and custom rules
 - **Handle Bookings**: Process bookings through carts, orders, and allocations
 - **Admin Dashboard**: Manage all aspects of your booking system through an intuitive admin interface
@@ -18,11 +19,12 @@ The Medusa Booking System Plugin extends your Medusa e-commerce platform with po
 
 - **Resource Management**: Create and manage bookable resources with product integration
 - **Availability Rules**: Define complex availability patterns with priority-based rule system
-- **Pricing Configuration**: Set up flexible pricing models with multiple price points
+- **Booking Rules**: Policy rules for payment requirements, confirmation flow, reservation TTL, and custom config; scope can be global or per-resource with priority and validity windows
+- **Pricing Configuration**: Set up flexible pricing models with multiple price points;
 - **Booking Workflows**: Complete booking flow from cart to order creation
 - **Resource Allocations**: Track and manage time-based resource allocations
 - **Status Management**: Control resource visibility with draft/published status
-- **Admin Interface**: Full-featured admin dashboard for managing bookings and resources
+- **Admin Interface**: Full-featured admin dashboard for managing bookings, resources, and booking rules
 
 ### Resource Types
 
@@ -42,6 +44,15 @@ The availability system supports:
 - Date range validity
 - Custom rule configurations
 - Active/inactive rule states
+
+### Booking Rules (Policies)
+
+Booking rules define policy behavior applied at evaluation time:
+
+- **Scope**: `global` (all resources) or `resource` (specific resource IDs)
+- **Policy fields**: `require_payment`, `require_confirmation`, `reservation_ttl_seconds`
+- **Optional**: `configuration` (custom JSON), `priority`, `valid_from` / `valid_until`, `is_active`
+- **Resolution**: Rules are merged by priority; store and admin can resolve effective rules for a given time (and optionally resource) via the rules endpoints.
 
 ### Pricing System
 
@@ -119,8 +130,9 @@ Public-facing endpoints for customers to browse and book resources.
 #### Booking Resources
 
 - `GET /store/booking-resources` - List all available booking resources
-- `GET /store/booking-resources/[id]` - Get a specific booking resource
+- `GET /store/booking-resources/[id]` - Get a specific booking resource (optional query: `region_id` for region-based calculated pricing)
 - `GET /store/booking-resources/[id]/availability` - Get availability information
+- `GET /store/booking-resources/[id]/rules` - Get resolved booking rules for the resource (optional query: `evaluation_time` as ISO date string)
 - `POST /store/booking-resources/[id]/hold` - Hold a resource for a time period
 
 #### Booking Carts
@@ -146,6 +158,15 @@ Administrative endpoints for managing the booking system.
 - `GET /admin/booking-resources/[id]/availability` - Get availability for date range
 - `POST /admin/booking-resources/[id]/status` - Update resource status (published/draft)
 
+#### Booking Rules
+
+- `GET /admin/booking-rules` - List all booking rules (with booking resources count)
+- `POST /admin/booking-rules` - Create a booking rule
+- `GET /admin/booking-rules/[id]` - Get a booking rule (with booking resources count)
+- `POST /admin/booking-rules/[id]` - Update a booking rule
+- `DELETE /admin/booking-rules/[id]` - Delete a booking rule
+- `GET /admin/booking-rules/evaluate` - Evaluate resolved rules (query: `evaluation_time` required, optional `booking_resource_id`)
+
 #### Availability Rules
 
 - `GET /admin/booking-resources/[id]/availability-rules` - List availability rules
@@ -169,6 +190,15 @@ Administrative endpoints for managing the booking system.
 - `GET /admin/bookings/stats` - Get booking statistics
 
 For detailed API documentation including request/response schemas, see the [Swagger/OpenAPI specification](./src/api/swagger.yaml).
+
+### Admin UI (Booking)
+
+The admin dashboard under **Booking** includes:
+
+- **Overview** – Booking stats and recent activity
+- **Resources** – List and manage booking resources; create, edit, view availability, pricing, and status
+- **Rules** – List, create, edit, and delete booking rules; test rule evaluation for a given time and optional resource
+- **Bookings** – List and manage bookings; create and cancel
 
 ## Complete Scenario Walkthrough
 
@@ -251,12 +281,19 @@ curl -X POST http://localhost:9000/admin/booking-resources/br_01HXXX.../status \
   }'
 ```
 
-### Step 5: Check Availability (Storefront)
+### Step 5: Check Availability and Resource (Storefront)
 
-Customers can check availability:
+Customers can fetch a resource with region-based pricing and check availability:
 
 ```bash
+# Get resource with region-based calculated price
+curl "http://localhost:9000/store/booking-resources/br_01HXXX...?region_id=reg_xxx"
+
+# Check availability
 curl "http://localhost:9000/store/booking-resources/br_01HXXX.../availability?startDate=2026-02-15&endDate=2026-02-20"
+
+# Optional: get resolved booking rules for the resource
+curl "http://localhost:9000/store/booking-resources/br_01HXXX.../rules?evaluation_time=2026-02-15T10:00:00Z"
 ```
 
 ### Step 6: Create Booking Cart (Storefront)
@@ -296,6 +333,10 @@ curl -X POST http://localhost:9000/store/booking-carts/[cartId]/complete
 ```
 
 The booking is now confirmed, and the resource allocation is finalized.
+
+## License
+
+Apache 2.0
 
 ## Author
 

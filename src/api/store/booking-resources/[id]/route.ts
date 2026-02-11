@@ -1,21 +1,20 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
-import { ContainerRegistrationKeys, QueryContext } from "@medusajs/framework/utils";
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+import {
+  ContainerRegistrationKeys,
+  QueryContext,
+} from "@medusajs/framework/utils";
 
 type GetBookingResourceAvailablityType = {
-  startDate?: Date,
-  endDate?: Date
-}
+  startDate?: Date;
+  endDate?: Date;
+};
 
-export async function GET (
+export async function GET(
   req: MedusaRequest<GetBookingResourceAvailablityType>,
-  res: MedusaResponse
+  res: MedusaResponse,
 ) {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
 
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-    
   const { data: bookingResources } = await query.graph({
     entity: "booking_resource",
     fields: [
@@ -30,28 +29,28 @@ export async function GET (
       "product.handle",
       "product.description",
       "product.thumbnail",
-      "booking_resource_pricing_configs.product_variant.calculated_price.*"
+      "booking_resource_pricing_configs.product_variant.calculated_price.*",
     ],
     filters: {
-      id: req.params.id
+      id: req.params.id,
     },
     context: {
       booking_resource_pricing_configs: {
         product_variant: {
           calculated_price: QueryContext({
-            currency_code: "usd",
+            region_id: req.query.region_id,
           }),
         },
       },
     },
-  })
+  });
 
   const response = {
-      bookingResource: bookingResources[0],
-      product: bookingResources[0].product ?? undefined,
-  }
+    bookingResource: bookingResources[0],
+    product: bookingResources[0].product ?? undefined,
+  };
 
-  res.json(response)
+  res.json(response);
 }
 
-export const AUTHENTICATE = false
+export const AUTHENTICATE = true;
