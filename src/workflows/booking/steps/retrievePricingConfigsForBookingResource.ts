@@ -10,7 +10,8 @@ type StepInput = {
 const retrievePricingConfigsForBookingResource = createStep(
   "step-retrieving-pricing-configs-for-booking-resource", 
   async ({ bookingResourceId, unit } : StepInput, { container }) => {
-
+    console.log("bookingResourceId", bookingResourceId);
+    console.log("unit", unit);
     const bookingModuleService: BookingModuleService =
       container.resolve(BOOKING_MODULE)
 
@@ -18,6 +19,7 @@ const retrievePricingConfigsForBookingResource = createStep(
       booking_resource_id: bookingResourceId,
       unit: unit
     })
+    console.log("pricingConfigs", pricingConfigs);
 
     return new StepResponse(pricingConfigs)
   }

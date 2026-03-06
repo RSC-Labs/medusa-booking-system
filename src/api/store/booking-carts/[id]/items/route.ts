@@ -1,67 +1,85 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { addToCartWorkflow } from "@medusajs/medusa/core-flows";
 import BookingModuleService from "../../../../../modules/booking/service";
 import { BOOKING_MODULE } from "../../../../../modules/booking";
-import { Modules } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
+import addCartItemWorkflow, {
+  type AddCartItemWorkflowInput,
+} from "../../../../../workflows/booking-cart/addCartItemWorkflow";
 
 type PostBookingCartsType = {
   booking_resource_id: string;
   start_date: Date;
   end_date: Date;
+  pricing_unit: AddCartItemWorkflowInput["context"]["unit"];
 };
 
 export async function POST(
   req: MedusaRequest<PostBookingCartsType>,
   res: MedusaResponse,
 ) {
+
   const bookingModuleService: BookingModuleService =
-    req.scope.resolve(BOOKING_MODULE);
-
-  const pricingConfigs =
-    await bookingModuleService.listBookingResourcePricingConfigs({
-      booking_resource_id: req.body.booking_resource_id,
-    });
-
-  // TODO: Add acquire lock
-  const bookingResourceAllocation =
-    await bookingModuleService.createBookingResourceAllocations({
-      booking_resource_id: req.body.booking_resource_id,
-      start_time: req.body.start_date,
-      end_time: req.body.end_date,
-      status: "hold",
-    });
-  await addToCartWorkflow(req.scope).run({
-    input: {
-      cart_id: req.params.id,
-      items: [
-        {
-          variant_id: pricingConfigs[0].product_variant_id,
-          quantity: 1,
-        },
-      ],
-    },
-  });
+  req.scope.resolve(BOOKING_MODULE);
 
   const cartModule = req.scope.resolve(Modules.CART);
 
-  const result = await cartModule.listLineItems({
-    cart_id: req.params.id,
-    variant_id: pricingConfigs[0].product_variant_id,
+  const cart = await cartModule.retrieveCart(req.params.id);
+
+  await addCartItemWorkflow(req.scope).run({
+    input: {
+      cart: cart,
+      bookingResource: {
+        id: req.body.booking_resource_id,
+        startDate: req.body.start_date,
+        endDate: req.body.end_date,
+      },
+      context: {
+        unit: req.body.pricing_unit,
+      },
+    },
   });
 
-  const bookingCartItem = await bookingModuleService.createBookingCartItems({
-    cart_id: req.params.id as string,
-    cart_line_item_id: result[0].id,
-    booking_resource_allocation: bookingResourceAllocation.id,
-    start_time: req.body.start_date,
-    end_time: req.body.end_date,
-    status: "reserved",
-  });
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
+  const { data: [updatedCart] } = await query.graph({
+    entity: "cart",
+    fields: [
+      "id",
+      "currency_code",
+      "total",
+      "subtotal",
+      "tax_total",
+      "discount_total",
+      "discount_subtotal",
+      "discount_tax_total",
+      "original_total",
+      "original_tax_total",
+      "item_total",
+      "item_subtotal",
+      "item_tax_total",
+      "original_item_total",
+      "original_item_subtotal",
+      "original_item_tax_total",
+      "shipping_total",
+      "shipping_subtotal",
+      "shipping_tax_total",
+      "original_shipping_tax_total",
+      "original_shipping_subtotal",
+      "original_shipping_total",
+      "credit_line_subtotal",
+      "credit_line_tax_total",
+      "credit_line_total",
+      "items.*",
+      "shipping_methods.*",
+    ],
+    filters: {
+      id: req.params.id,
+    },
+  })
   res.json({
-    booking_cart_item: bookingCartItem,
-    booking_resource_allocation: bookingResourceAllocation,
+    cart: updatedCart,
+    booking_line_items: await bookingModuleService.listBookingCartItems({
+      cart_id: req.params.id,
+    }),
   });
 }
-
-export const AUTHENTICATE = true;

@@ -19,5 +19,3 @@ export async function POST(
   });
   res.json(result);
 }
-
-export const AUTHENTICATE = true;

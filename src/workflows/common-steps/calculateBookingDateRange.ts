@@ -10,7 +10,6 @@ type StepInput = {
 const stepCalculateBookingDateRange = createStep(
   "step-calculate-booking-date-range",
   async ({ timeRanges }: StepInput, { container }) => {
-    console.log("timeRanges", timeRanges);
 
     function getBookingDateRange(
       timeRanges: { startTime: string | Date; endTime: string | Date }[],
@@ -27,8 +26,6 @@ const stepCalculateBookingDateRange = createStep(
 
     const { finalStartTime: startDate, finalEndTime: endDate } =
       getBookingDateRange(timeRanges);
-    console.log("startDate", startDate);
-    console.log("endDate", endDate);
 
     return new StepResponse({
       startDate: startDate as Date,

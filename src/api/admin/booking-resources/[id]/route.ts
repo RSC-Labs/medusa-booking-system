@@ -132,12 +132,16 @@ export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
   const bookingResource = await bookingModuleService.retrieveBookingResource(
     req.params.id,
   );
-  const { result } = await deleteBookingResourceWorkflow(req.scope).run({
+  await deleteBookingResourceWorkflow(req.scope).run({
     input: {
       bookingResource: bookingResource,
     },
   });
-  res.json(result);
+  res.status(200).json({
+    id: bookingResource.id,
+    object: "booking_resource",
+    deleted: true,
+  });
 }
 
 export const AUTHENTICATE = true;

@@ -163,6 +163,7 @@ paths:
                 - booking_resource_id
                 - start_date
                 - end_date
+                - pricing_unit
               properties:
                 booking_resource_id:
                   type: string
@@ -172,6 +173,9 @@ paths:
                 end_date:
                   type: string
                   format: date-time
+                pricing_unit:
+                  type: string
+                  description: Pricing unit used when calculating the booking price.
       responses:
         '200':
           description: Item added successfully
@@ -180,10 +184,12 @@ paths:
               schema:
                 type: object
                 properties:
-                  booking_cart_item:
-                    $ref: '#/components/schemas/BookingCartItem'
-                  booking_resource_allocation:
-                    $ref: '#/components/schemas/BookingResourceAllocation'
+                  cart:
+                    $ref: '#/components/schemas/Cart'
+                  booking_line_items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookingCartItem'
 
   /store/booking-carts/{id}/items/{itemId}:
     delete:
@@ -219,8 +225,35 @@ paths:
       tags:
         - Store - Booking Resources
       summary: List booking resources
-      description: Get all available booking resources with product information
+      description: >
+        Get all available booking resources with product information.
+        Requires either a region_id or currency_code for calculated pricing.
+        If both are provided, currency_code takes precedence.
+        Optionally filter by product handle.
       operationId: listBookingResources
+      parameters:
+        - name: region_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Region ID for region-based calculated price.
+            Either region_id or currency_code must be provided.
+        - name: currency_code
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Currency code for calculated price (for example, usd).
+            If both region_id and currency_code are provided, currency_code takes precedence.
+        - name: handle
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional product handle to filter booking resources. Typically returns a single matching resource.
       responses:
         '200':
           description: List of booking resources
@@ -306,7 +339,10 @@ paths:
       tags:
         - Store - Booking Resources
       summary: Get booking resource availability
-      description: Get availability information for a booking resource
+      description: >
+        Get availability information for a booking resource between two dates.
+        This endpoint returns availability blocks and the resolved rules used
+        to compute them.
       operationId: getBookingResourceAvailability
       parameters:
         - name: id
@@ -315,18 +351,27 @@ paths:
           schema:
             type: string
           description: Booking resource ID
-        - name: startDate
+        - name: from
           in: query
           schema:
             type: string
             format: date-time
-          description: Start date for availability check
-        - name: endDate
+          required: true
+          description: Start date (inclusive) for availability check
+        - name: to
           in: query
           schema:
             type: string
             format: date-time
-          description: End date for availability check
+          required: true
+          description: End date (inclusive) for availability check
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [month, week, day, agenda]
+            default: month
+          description: View granularity used when computing availability.
       responses:
         '200':
           description: Availability information retrieved successfully
@@ -335,10 +380,57 @@ paths:
               schema:
                 type: object
                 properties:
-                  bookingResource:
+                  booking_resource:
                     $ref: '#/components/schemas/BookingResource'
-                  product:
-                    $ref: '#/components/schemas/Product'
+                  availability:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookingAvailability'
+                  resolved_rules:
+                    $ref: '#/components/schemas/ResolvedRules'
+
+  # Store - Bookings
+  /store/bookings:
+    get:
+      tags:
+        - Store - Booking Carts
+      summary: List customer bookings
+      description: >
+        List bookings that belong to the currently authenticated customer.
+        Results are scoped to orders created by the customer associated with
+        the current access token.
+      operationId: listCustomerBookings
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip for pagination.
+        - name: take
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Number of records to return.
+      responses:
+        '200':
+          description: List of bookings for the current customer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+                  count:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
 
   /store/booking-resources/{id}/hold:
     post:

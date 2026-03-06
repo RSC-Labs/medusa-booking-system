@@ -11,9 +11,6 @@ const stepConfirmBookingResourceAllocations = createStep(
   "step-confirm-booking-resource-allocations", 
   async ({ bookingCartItems } : StepInput, { container }) => {
 
-
-    console.log("bookingCartItems", bookingCartItems);
-
     const bookingModuleService: BookingModuleService =
       container.resolve(BOOKING_MODULE)
 

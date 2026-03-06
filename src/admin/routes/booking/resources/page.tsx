@@ -9,9 +9,13 @@ import {
   Container, 
   Heading, 
   Table, 
-  Text
+  Text,
+  Prompt,
+  toast,
+  Toaster,
 } from "@medusajs/ui";
 import { Plus, Spinner, MagnifyingGlass, Funnel } from "@medusajs/icons";
+import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { medusaSdk } from "../../../lib/sdk";
@@ -29,8 +33,25 @@ import { CreateResourceModal, ResourceTypesDrawer } from "../components/CreateRe
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isTypesOpen, setIsTypesOpen] = useState(false)
   const [lastTypeUpdate, setLastTypeUpdate] = useState(Date.now())
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   
   const navigate = useNavigate()
+
+  const handleDeleteResource = async (id: string) => {
+    setDeletingId(id)
+    try {
+      await medusaSdk.client.fetch(`/admin/booking-resources/${id}`, {
+        method: "DELETE",
+      })
+      toast.success("Resource deleted")
+      await fetchResources()
+    } catch (error) {
+      console.error("Failed to delete resource", error)
+      toast.error("Failed to delete resource")
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const fetchResources = async () => {
     setLoading(true)
@@ -97,12 +118,13 @@ import { CreateResourceModal, ResourceTypesDrawer } from "../components/CreateRe
               <Table.HeaderCell>Status</Table.HeaderCell>
               <Table.HeaderCell>Bookable</Table.HeaderCell>
               <Table.HeaderCell>Subtitle</Table.HeaderCell>
+              <Table.HeaderCell className="w-[80px]">Actions</Table.HeaderCell>
             </Table.Row>
           </Table.Header>
           <Table.Body>
             {loading ? (
               <Table.Row>
-                <Table.Cell className="text-center py-4">
+                <Table.Cell className="text-center py-4" {...({ colSpan: 7 } as React.ComponentProps<"td">)}>
                   <div className="flex justify-center">
                     <Spinner className="animate-spin" />
                   </div>
@@ -133,11 +155,42 @@ import { CreateResourceModal, ResourceTypesDrawer } from "../components/CreateRe
                     </Badge>
                   </Table.Cell>
                   <Table.Cell>{resource.subtitle || "-"}</Table.Cell>
+                  <Table.Cell onClick={(e) => e.stopPropagation()}>
+                    <Prompt>
+                      <Prompt.Trigger asChild>
+                        <Button
+                          variant="transparent"
+                          size="small"
+                          className="text-ui-fg-error p-2"
+                          disabled={deletingId === resource.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </Prompt.Trigger>
+                      <Prompt.Content>
+                        <Prompt.Header>
+                          <Prompt.Title>Delete resource</Prompt.Title>
+                          <Prompt.Description>
+                            Are you sure you want to delete &quot;{resource.title}&quot;? This action cannot be undone.
+                          </Prompt.Description>
+                        </Prompt.Header>
+                        <Prompt.Footer>
+                          <Prompt.Cancel disabled={deletingId === resource.id}>Cancel</Prompt.Cancel>
+                          <Prompt.Action
+                            onClick={() => handleDeleteResource(resource.id)}
+                            disabled={deletingId === resource.id}
+                          >
+                            {deletingId === resource.id ? "Deleting…" : "Delete"}
+                          </Prompt.Action>
+                        </Prompt.Footer>
+                      </Prompt.Content>
+                    </Prompt>
+                  </Table.Cell>
                 </Table.Row>
               ))
             ) : (
               <Table.Row>
-                <Table.Cell className="text-center py-4 text-ui-fg-subtle">
+                <Table.Cell className="text-center py-4 text-ui-fg-subtle" {...({ colSpan: 7 } as React.ComponentProps<"td">)}>
                   No resources found
                 </Table.Cell>
               </Table.Row>
@@ -166,6 +219,8 @@ import { CreateResourceModal, ResourceTypesDrawer } from "../components/CreateRe
         onOpenChange={setIsTypesOpen}
         onTypeChange={() => setLastTypeUpdate(Date.now())}
       />
+
+      <Toaster />
     </div>
    )
  }

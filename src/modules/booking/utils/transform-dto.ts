@@ -27,9 +27,11 @@ export function transformToBookingPricingApi(variants: any[], priceConfigs: Book
 
     const pricing: BookingResourcePricing[] = variant.prices.map(
       (price: any) => ({
-        amount: price.amount,
-        currency_code: price.currency_code
-      })
+        // Core prices are stored in minor units (e.g. cents).
+        // Expose them to the admin UI as major units for easier editing.
+        amount: price.amount / 100,
+        currency_code: price.currency_code,
+      }),
     )
 
     result.push({

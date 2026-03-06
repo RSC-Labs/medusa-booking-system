@@ -9,6 +9,7 @@ import stepCreateBookingResourceAllocation from "../common-steps/createBookingRe
 import retrieveProductVariantStep from "../booking/steps/retrieveProductVariantStep";
 import stepRetrievePricingConfigsForBookingResource from "../booking/steps/retrievePricingConfigsForBookingResource";
 import createBookingCartItemsStep from "./steps/createBookingCartItemsStep";
+import calculateItemQuantityStep from "./steps/calculateItemQuantity";
 
 export type AddCartItemWorkflowInput = {
   cart: CartDTO;
@@ -49,6 +50,15 @@ const addCartItemWorkflow = createWorkflow(
       (data) => data.pricingConfigs[0],
     );
 
+    const quantity = calculateItemQuantityStep({
+      unit: input.context.unit,
+      pricingConfig,
+      startDate: input.bookingResource.startDate,
+      endDate: input.bookingResource.endDate,
+    });
+
+    const quantityToAdd = transform({ quantity }, (data) => data.quantity);
+
     const retrievedProductVariant = retrieveProductVariantStep({
       productVariantId: pricingConfig.product_variant_id,
     });
@@ -69,7 +79,7 @@ const addCartItemWorkflow = createWorkflow(
         items: [
           {
             variant_id: itemToAdd.id,
-            quantity: 1,
+            quantity: quantityToAdd,
           },
         ],
       },
@@ -80,8 +90,11 @@ const addCartItemWorkflow = createWorkflow(
       (data) => data.bookingResourceAllocation.id,
     );
 
+    // TODO: Attach pricing configuration to know the unit. Thanks to that we can calculate the price per booking line item.
+
     createBookingCartItemsStep({
       cartId: input.cart.id,
+      productVariantId: itemToAdd.id,
       bookingResourceAllocationId: bookingResourceAllocationId,
       startTime: input.bookingResource.startDate,
       endTime: input.bookingResource.endDate,

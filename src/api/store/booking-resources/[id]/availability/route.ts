@@ -56,5 +56,3 @@ export async function GET(
     resolved_rules,
   });
 }
-
-export const AUTHENTICATE = true;

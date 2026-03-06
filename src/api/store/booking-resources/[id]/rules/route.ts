@@ -30,5 +30,3 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   res.json({ resolved_rules });
 }
-
-export const AUTHENTICATE = true;

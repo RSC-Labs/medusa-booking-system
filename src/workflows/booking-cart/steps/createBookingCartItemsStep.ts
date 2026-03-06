@@ -1,15 +1,11 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
-import {
-  BookingCartItemType,
-  BookingResourcePricingConfigType,
-  BookingResourceType,
-} from "../../../modules/booking/types/booking";
 import BookingModuleService from "../../../modules/booking/service";
 import { BOOKING_MODULE } from "../../../modules/booking";
 import { Modules } from "@medusajs/framework/utils";
 
 type StepInput = {
   cartId: string;
+  productVariantId: string;
   bookingResourceAllocationId: string;
   startTime: Date;
   endTime: Date;
@@ -18,13 +14,18 @@ type StepInput = {
 const stepCreateBookingCartItems = createStep(
   "step-create-booking-cart-items",
   async (
-    { cartId, bookingResourceAllocationId, startTime, endTime }: StepInput,
+    { cartId, productVariantId, bookingResourceAllocationId, startTime, endTime }: StepInput,
     { container },
   ) => {
     const cartModule = container.resolve(Modules.CART);
     const lineItems = await cartModule.listLineItems({
       cart_id: cartId,
+      variant_id: productVariantId,
     });
+
+    // ADR: We do not have info about the cart line item id, so we need to use product variant id.
+    // And the same reservation goes to the same Medusa Cart Line Item as quantity.
+    // So we need to create new booking cart item for the same Medusa Cart Line Item with new booking resource allocation.
 
     const bookingModuleService: BookingModuleService = container.resolve(BOOKING_MODULE);
     for (const lineItem of lineItems) {

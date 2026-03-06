@@ -69,6 +69,7 @@ export default function ResourceDetailPage() {
   const [evaluateResult, setEvaluateResult] = useState<ResolvedRulesDTO | null>(null)
   const [evaluateLoading, setEvaluateLoading] = useState(false)
   const [evaluateContext, setEvaluateContext] = useState<{ ruleName: string; evaluationTime: string } | null>(null)
+  const [isDeletingResource, setIsDeletingResource] = useState(false)
 
   const evaluateRuleAtNow = useCallback(async (rule: { id: string; name: string }) => {
     if (!resourceId) return
@@ -243,19 +244,46 @@ export default function ResourceDetailPage() {
 
   const handleSavePricing = async () => {
     try {
-      await Promise.all(pricingForm.map((configItem) => {
-        const priceConfigId = configItem.config.id
-        if (priceConfigId.startsWith("temp_")) {
-          return medusaSdk.client.fetch(`/admin/booking-resources/${resourceId}/pricing`, {
-            method: "POST",
-            body: { ...configItem, booking_resource_pricing_config: { ...configItem.config, id: undefined }, booking_resource_pricing: configItem.pricing }
-          })
-        }
-        return medusaSdk.client.fetch(`/admin/booking-resources/${resourceId}/pricing/${priceConfigId}`, {
-          method: "POST",
-          body: configItem
-        })
-      }))
+      await Promise.all(
+        pricingForm.map((configItem) => {
+          const priceConfigId = configItem.config.id
+
+          // Normalize UI amounts (entered in major units, e.g. 85) to
+          // minor units (e.g. 8500) expected by core pricing.
+          const normalizedPricing = configItem.pricing.map((price) => ({
+            ...price,
+            amount: Math.round(price.amount * 100),
+          }))
+
+          if (priceConfigId.startsWith("temp_")) {
+            return medusaSdk.client.fetch(
+              `/admin/booking-resources/${resourceId}/pricing`,
+              {
+                method: "POST",
+                body: {
+                  ...configItem,
+                  booking_resource_pricing_config: {
+                    ...configItem.config,
+                    id: undefined,
+                  },
+                  booking_resource_pricing: normalizedPricing,
+                },
+              },
+            )
+          }
+
+          return medusaSdk.client.fetch(
+            `/admin/booking-resources/${resourceId}/pricing/${priceConfigId}`,
+            {
+              method: "POST",
+              body: {
+                ...configItem,
+                pricing: normalizedPricing,
+              },
+            },
+          )
+        }),
+      )
       await fetchResource()
       await fetchAvailability()
 
@@ -472,6 +500,23 @@ export default function ResourceDetailPage() {
     }
   }
 
+  const handleDeleteResource = async () => {
+    if (!resourceId) return
+    setIsDeletingResource(true)
+    try {
+      await medusaSdk.client.fetch(`/admin/booking-resources/${resourceId}`, {
+        method: "DELETE",
+      })
+      toast.success("Resource deleted")
+      navigate("/booking/resources")
+    } catch (error) {
+      console.error("Failed to delete resource:", error)
+      toast.error("Failed to delete resource")
+    } finally {
+      setIsDeletingResource(false)
+    }
+  }
+
   const todos: string[] = []
   if (!booking_resource.is_bookable) {
     todos.push("Booking resource must be bookable")
@@ -485,22 +530,54 @@ export default function ResourceDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="transparent"
-          className="p-2"
-          onClick={() => navigate("/booking/resources")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <Heading level="h1" className="text-3xl font-bold tracking-tight">
-            Resource Details
-          </Heading>
-          <Text className="text-ui-fg-subtle">
-            View and manage resource {booking_resource.id}
-          </Text>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="transparent"
+            className="p-2"
+            onClick={() => navigate("/booking/resources")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <Heading level="h1" className="text-3xl font-bold tracking-tight">
+              Resource Details
+            </Heading>
+            <Text className="text-ui-fg-subtle">
+              View and manage resource {booking_resource.id}
+            </Text>
+          </div>
         </div>
+        <Prompt>
+          <Prompt.Trigger asChild>
+            <Button
+              variant="secondary"
+              size="small"
+              className="text-ui-fg-error"
+              disabled={isDeletingResource}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete resource
+            </Button>
+          </Prompt.Trigger>
+          <Prompt.Content>
+            <Prompt.Header>
+              <Prompt.Title>Delete resource</Prompt.Title>
+              <Prompt.Description>
+                Are you sure you want to delete &quot;{booking_resource.title}&quot;? This action cannot be undone and will remove all associated pricing and availability rules.
+              </Prompt.Description>
+            </Prompt.Header>
+            <Prompt.Footer>
+              <Prompt.Cancel disabled={isDeletingResource}>Cancel</Prompt.Cancel>
+              <Prompt.Action
+                onClick={handleDeleteResource}
+                disabled={isDeletingResource}
+              >
+                {isDeletingResource ? "Deleting…" : "Delete"}
+              </Prompt.Action>
+            </Prompt.Footer>
+          </Prompt.Content>
+        </Prompt>
       </div>
 
       {!isPublished && <Container className="p-6">
